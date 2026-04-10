@@ -1,10 +1,23 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Moon, SunMedium } from "lucide-react";
 import { useTheme } from "@/components/providers/theme-provider";
 
 export function ThemeToggle() {
+  const [mounted, setMounted] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setMounted(true));
+
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
   const isDark = resolvedTheme === "dark";
 
   return (

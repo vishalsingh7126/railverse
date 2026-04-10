@@ -18,6 +18,11 @@ export const metadata: Metadata = {
   title: "Railverse | A TravelCore Product",
   description:
     "Railverse is a next-generation railway ecosystem platform blending booking, live operations, analytics, AI planning, and safety.",
+  icons: {
+    icon: "/logo-icon.png",
+    shortcut: "/logo-icon.png",
+    apple: "/logo-icon.png",
+  },
 };
 
 export default function RootLayout({

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -7,7 +8,6 @@ import {
   Brain,
   ChartNoAxesCombined,
   CircleUserRound,
-  Compass,
   LayoutDashboard,
   Shield,
   Signal,
@@ -38,8 +38,15 @@ export function Sidebar() {
   return (
     <aside className="glass rail-grid sticky top-4 hidden h-[calc(100vh-2rem)] w-72 shrink-0 overflow-y-auto rounded-3xl p-4 lg:block">
       <div className="mb-6 flex items-center gap-3 rounded-2xl bg-foreground/5 p-3">
-        <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 text-white shadow-lg shadow-blue-500/30">
-          <Compass size={20} />
+        <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/15 via-slate-950/60 to-cyan-400/15 p-1.5 shadow-lg shadow-blue-500/20 ring-1 ring-white/10">
+          <Image
+            src="/logo-icon.png"
+            alt="Railverse"
+            width={40}
+            height={40}
+            sizes="40px"
+            className="h-full w-full object-contain"
+          />
         </div>
         <div>
           <p className="font-display text-lg font-bold tracking-tight">Railverse</p>
