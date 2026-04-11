@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import type { UnifiedTrain } from "@/lib/trainData";
-import { getTrainSchedule } from "@/lib/trainData";
+import { getTrainSchedule, getRealStopCount } from "@/lib/trainData";
 import { Clock, MapPin, Zap, X, Users, Wind } from "lucide-react";
 import { Chip } from "@/components/ui/chip";
 import { TrainSchedule } from "./TrainSchedule";
@@ -150,7 +150,7 @@ export function TrainDetailsModal({ train, onClose }: TrainDetailsModalProps) {
                       <Users size={16} className="text-primary-soft" />
                       <p className="text-xs font-semibold text-foreground/60 uppercase">Total Stops</p>
                     </div>
-                    <p className="font-display text-lg font-bold">{schedule.length}</p>
+                    <p className="font-display text-lg font-bold">{getRealStopCount(train.number)}</p>
                   </div>
                 )}
               </div>
@@ -161,6 +161,7 @@ export function TrainDetailsModal({ train, onClose }: TrainDetailsModalProps) {
               <section>
                 <TrainSchedule 
                   stops={schedule} 
+                  trainNumber={train.number}
                   fromStation={train.fromName}
                   toStation={train.toName}
                 />

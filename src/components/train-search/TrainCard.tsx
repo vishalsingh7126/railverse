@@ -1,6 +1,7 @@
 "use client";
 
 import type { UnifiedTrain } from "@/lib/trainData";
+import { getRealStopCount } from "@/lib/trainData";
 import { Clock, MapPin, Zap } from "lucide-react";
 import { Chip } from "@/components/ui/chip";
 
@@ -76,7 +77,7 @@ export function TrainCard({ train, onClick }: TrainCardProps) {
             <div className="flex items-center gap-3 text-sm">
               <Zap size={16} className="text-cyan-400 flex-shrink-0" />
               <span>
-                <span className="font-medium">{train.stops.length}</span>
+                <span className="font-medium">{getRealStopCount(train.number)}</span>
                 <span className="text-foreground/60 ml-1">stops</span>
               </span>
             </div>

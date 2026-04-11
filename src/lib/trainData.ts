@@ -420,6 +420,36 @@ export function getTrainSchedule(trainNumber: string): TrainStop[] {
   return buildScheduleStops(toStringValue(trainNumber).trim());
 }
 
+export function getRealStopCount(trainNumber: string): number {
+  const stops = getTrainSchedule(trainNumber);
+
+  if (!stops || stops.length === 0) {
+    return 0;
+  }
+
+  const parseTime = (timeStr: string): number => {
+    if (!timeStr || timeStr === "N/A") return 0;
+    const parts = timeStr.split(":");
+    if (parts.length < 2) return 0;
+    const hours = parseInt(parts[0], 10);
+    const minutes = parseInt(parts[1], 10);
+    return isNaN(hours) || isNaN(minutes) ? 0 : hours * 60 + minutes;
+  };
+
+  const calculateHaltDuration = (stop: TrainStop): number => {
+    if (stop.arrival === stop.departure || stop.arrival === "N/A" || stop.departure === "N/A") {
+      return 0;
+    }
+    const arrivalMinutes = parseTime(stop.arrival);
+    const departureMinutes = parseTime(stop.departure);
+    if (arrivalMinutes === 0 || departureMinutes === 0) return 0;
+    const duration = departureMinutes - arrivalMinutes;
+    return duration > 0 ? duration : 0;
+  };
+
+  return stops.filter((stop) => calculateHaltDuration(stop) > 0).length;
+}
+
 export function getStationByCode(stationCode: string): StationData | null {
   const station = stationMap.get(normalizeQuery(stationCode));
   return station ?? null;
