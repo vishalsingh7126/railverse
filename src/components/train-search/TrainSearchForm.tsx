@@ -12,7 +12,8 @@ type TrainSearchFormProps = {
   loading?: boolean;
 };
 
-type ActiveField = "from" | "to" | "train" | null;
+type FieldType = "from" | "to" | "train";
+type ActiveField = FieldType | null;
 
 type SuggestionItem = {
   key: string;
@@ -235,11 +236,7 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
     onSelectTrain(suggestion.train);
   };
 
-  const handleFieldKeyDown = (field: ActiveField, event: KeyboardEvent<HTMLInputElement>) => {
-    if (!field) {
-      return;
-    }
-
+  const handleFieldKeyDown = (field: FieldType, event: KeyboardEvent<HTMLInputElement>) => {
     const suggestions = field === "from" ? fromSuggestions : field === "to" ? toSuggestions : trainSuggestions;
 
     if (event.key === "ArrowDown" && suggestions.length > 0) {
