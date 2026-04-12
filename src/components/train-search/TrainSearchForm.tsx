@@ -213,11 +213,11 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
     setTrainActiveIndex(0);
   }, [trainSuggestions]);
 
-  const selectStationSuggestion = (field: "from" | "to" | "train", suggestion: SuggestionItem) => {
+  const selectStationSuggestion = (field: "from" | "to", suggestion: SuggestionItem) => {
     if (field === "from") {
       setFrom(suggestion.value);
       setFromSuggestions([]);
-    } else if (field === "to") {
+    } else {
       setTo(suggestion.value);
       setToSuggestions([]);
     }
@@ -307,9 +307,9 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
     }
   };
 
-  const renderStationDropdown = (field: "from" | "to" | "train") => {
-    const suggestions = field === "from" ? fromSuggestions : field === "to" ? toSuggestions : [];
-    const activeIndex = field === "from" ? fromActiveIndex : field === "to" ? toActiveIndex : 0;
+  const renderStationDropdown = (field: "from" | "to") => {
+    const suggestions = field === "from" ? fromSuggestions : toSuggestions;
+    const activeIndex = field === "from" ? fromActiveIndex : toActiveIndex;
 
     if (activeField !== field || suggestions.length === 0) {
       return null;
