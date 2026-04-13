@@ -313,7 +313,7 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
         return;
       }
 
-      if ((field === "from" || field === "to") && suggestions.length > 0) {
+      if (suggestions.length > 0) {
         event.preventDefault();
         const selectedSuggestion = field === "from" ? suggestions[fromActiveIndex] ?? suggestions[0] : suggestions[toActiveIndex] ?? suggestions[0];
         if (selectedSuggestion) {
@@ -322,9 +322,7 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
         }
       }
 
-      if (field !== "train") {
-        handleRouteSearch();
-      }
+      handleRouteSearch();
     }
 
     if (event.key === "Escape") {
