@@ -8,19 +8,31 @@ type GetStartedHeroProps = {
 
 export function GetStartedHero({ onGetStarted }: GetStartedHeroProps) {
   return (
-    <section className="glass relative overflow-hidden rounded-3xl border border-foreground/10 p-6 shadow-[0_14px_46px_rgba(0,0,0,0.28)] md:p-8">
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,rgba(35,69,178,0.3)_0%,rgba(13,30,56,0.55)_45%,rgba(29,165,150,0.24)_100%)]" />
-      <div className="pointer-events-none absolute -left-24 -top-24 h-52 w-52 rounded-full bg-blue-500/30 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-28 -right-28 h-56 w-56 rounded-full bg-cyan-400/30 blur-3xl" />
+    <section className="glass relative mt-6 overflow-hidden rounded-3xl border border-white/10 px-6 py-8 shadow-lg md:px-8 md:py-10">
+      {/* Animated gradient background */}
+      <style>{`
+        @keyframes gradientShift {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        .gradient-animate {
+          background-size: 200% 200%;
+          animation: gradientShift 8s ease infinite;
+        }
+      `}</style>
+      
+      <div className="pointer-events-none absolute inset-0 gradient-animate rounded-3xl bg-[linear-gradient(120deg,rgba(35,69,178,0.35)_0%,rgba(29,165,150,0.28)_50%,rgba(35,69,178,0.32)_100%)]" />
+      <div className="pointer-events-none absolute -left-32 -top-32 h-64 w-64 rounded-full bg-blue-500/35 blur-3xl opacity-60" />
+      <div className="pointer-events-none absolute -bottom-32 -right-32 h-64 w-64 rounded-full bg-cyan-400/35 blur-3xl opacity-60" />
 
-      <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+      <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="max-w-2xl">
-          <div className="mb-3 inline-flex items-center rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em] text-cyan-200">
+          <div className="mb-4 inline-flex items-center rounded-full border border-cyan-300/30 bg-cyan-400/15 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.15em] text-cyan-200">
             <Sparkles size={14} className="mr-2" />
             Smart Onboarding
           </div>
           <h2 className="font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl">Welcome to Railverse</h2>
-          <p className="mt-2 text-base text-foreground/75 md:text-lg">
+          <p className="mt-3 text-base text-foreground/70 md:text-lg">
             Smarter railway experience powered by TravelCore
           </p>
         </div>
@@ -29,10 +41,14 @@ export function GetStartedHero({ onGetStarted }: GetStartedHeroProps) {
           <button
             type="button"
             onClick={onGetStarted}
-            className="group inline-flex items-center rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_28px_rgba(58,105,255,0.45)] transition hover:-translate-y-0.5 hover:bg-primary/90"
+            className="group relative inline-flex items-center rounded-xl bg-primary px-7 py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-1 hover:scale-[1.03] hover:shadow-[0_12px_40px_rgba(58,105,255,0.55)] active:scale-95"
           >
-            Get Started
-            <ArrowRight size={15} className="ml-2 transition group-hover:translate-x-0.5" />
+            {/* Glow effect on hover */}
+            <span className="absolute inset-0 rounded-xl bg-primary opacity-0 blur-lg transition-opacity duration-300 group-hover:opacity-100" />
+            <span className="relative inline-flex items-center">
+              Get Started
+              <ArrowRight size={15} className="ml-2.5 transition-transform duration-300 group-hover:translate-x-1" />
+            </span>
           </button>
         </div>
       </div>

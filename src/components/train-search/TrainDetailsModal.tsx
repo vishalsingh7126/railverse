@@ -58,15 +58,33 @@ export function TrainDetailsModal({ train, onClose }: TrainDetailsModalProps) {
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="sticky top-0 flex items-start justify-between gap-4 border-b border-foreground/10 p-6 md:p-8 bg-gradient-to-r from-primary/5">
-            <div className="flex-1">
-              <h2 className="font-display text-2xl font-bold tracking-tight">{train.name || "Unknown Train"}</h2>
-              <p className="text-sm text-foreground/60 mt-1">Train #{train.number || "N/A"}</p>
+          <div className="sticky top-0 flex items-start justify-between gap-4 border-b border-white/10 bg-gradient-to-r from-primary/15 via-primary/5 to-accent/10 p-4 md:p-6 backdrop-blur-md">
+            <div className="flex-1 space-y-3">
+              <div>
+                <h2 className="font-display text-xl md:text-2xl font-bold tracking-tight">{train.name || "Unknown Train"}</h2>
+                <p className="mt-1 text-sm text-white/60">Train #{train.number || "N/A"}</p>
+              </div>
+
+              <div className="flex items-center gap-2 text-sm md:text-base font-semibold text-foreground/90">
+                <span className="truncate">{train.fromName || "N/A"}</span>
+                <ArrowIcon className="text-primary-soft shrink-0" />
+                <span className="truncate">{train.toName || "N/A"}</span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Chip tone={getTypeColor(train.type)} className="px-2.5 py-1 text-xs md:text-sm">
+                  {train.type || "N/A"}
+                </Chip>
+                <span className="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/80">
+                  <Clock size={12} className="mr-1.5 text-accent" />
+                  {train.duration || "N/A"}
+                </span>
+              </div>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-foreground/15 hover:border-foreground/30 transition"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/0 transition-all duration-200 hover:scale-105 hover:bg-white/10 hover:border-white/30 active:scale-95"
               aria-label="Close modal"
             >
               <X size={20} />

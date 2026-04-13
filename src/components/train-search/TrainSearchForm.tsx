@@ -20,6 +20,8 @@ type SuggestionItem = {
   label: string;
   helper: string;
   value: string;
+  stationCode?: string;
+  stationName?: string;
   train?: UnifiedTrain;
 };
 
@@ -57,6 +59,8 @@ function buildStationSuggestions(query: string, stations: StationData[]): Sugges
       label: `${station.code} - ${station.name}`,
       helper: station.state,
       value: station.code,
+      stationCode: station.code,
+      stationName: station.name,
     }));
 }
 
@@ -102,8 +106,10 @@ function buildTrainSuggestions(query: string, trains: UnifiedTrain[]): Suggestio
 
 export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: TrainSearchFormProps) {
   const [searchMode, setSearchMode] = useState<"route" | "train">("route");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [fromInputText, setFromInputText] = useState("");
+  const [toInputText, setToInputText] = useState("");
+  const [fromStation, setFromStation] = useState<{ code: string; name: string } | null>(null);
+  const [toStation, setToStation] = useState<{ code: string; name: string } | null>(null);
   const [date, setDate] = useState("");
   const [trainNumber, setTrainNumber] = useState("");
   const [fromSuggestions, setFromSuggestions] = useState<SuggestionItem[]>([]);
@@ -119,17 +125,29 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
   const stations = useMemo(() => getAllStations(), []);
   const trains = useMemo(() => getAllTrains(), []);
 
+  const fromDisplayValue = fromStation
+    ? `${fromStation.code} - ${fromStation.name}`
+    : fromInputText;
+  const toDisplayValue = toStation
+    ? `${toStation.code} - ${toStation.name}`
+    : toInputText;
+
   const handleSwap = () => {
-    setFrom(to);
-    setTo(from);
+    setFromInputText(toInputText);
+    setToInputText(fromInputText);
+    setFromStation(toStation);
+    setToStation(fromStation);
     setFromSuggestions([]);
     setToSuggestions([]);
     setActiveField(null);
   };
 
   const handleRouteSearch = () => {
-    if (from.trim() && to.trim()) {
-      onSearch(from.trim(), to.trim(), date);
+    const fromCode = fromStation?.code || fromInputText.trim();
+    const toCode = toStation?.code || toInputText.trim();
+
+    if (fromCode && toCode) {
+      onSearch(fromCode, toCode, date);
     }
   };
 
@@ -179,19 +197,19 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setFromSuggestions(buildStationSuggestions(from, stations));
+      setFromSuggestions(buildStationSuggestions(fromInputText, stations));
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [from, stations]);
+  }, [fromInputText, stations]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setToSuggestions(buildStationSuggestions(to, stations));
+      setToSuggestions(buildStationSuggestions(toInputText, stations));
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [to, stations]);
+  }, [toInputText, stations]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -214,11 +232,18 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
   }, [trainSuggestions]);
 
   const selectStationSuggestion = (field: "from" | "to", suggestion: SuggestionItem) => {
+    const selectedStation = {
+      code: suggestion.stationCode ?? suggestion.value,
+      name: suggestion.stationName ?? suggestion.label,
+    };
+
     if (field === "from") {
-      setFrom(suggestion.value);
+      setFromStation(selectedStation);
+      setFromInputText("");
       setFromSuggestions([]);
     } else {
-      setTo(suggestion.value);
+      setToStation(selectedStation);
+      setToInputText("");
       setToSuggestions([]);
     }
 
@@ -334,7 +359,11 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
                 <TrainFront size={14} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block font-semibold">{suggestion.label}</span>
+                <span className="block font-semibold">
+                  <span className="font-bold">{suggestion.stationCode ?? suggestion.value}</span>
+                  <span className="text-foreground/45"> - </span>
+                  <span className="font-medium text-foreground/75">{suggestion.stationName ?? suggestion.label}</span>
+                </span>
                 <span className="block truncate text-xs text-foreground/55">{suggestion.helper}</span>
               </span>
             </button>
@@ -424,9 +453,10 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
                 <label className="mb-2 block text-xs font-semibold uppercase text-foreground/60">From Station</label>
                 <input
                   type="text"
-                  value={from}
+                  value={fromDisplayValue}
                   onChange={(event) => {
-                    setFrom(event.target.value);
+                    setFromStation(null);
+                    setFromInputText(event.target.value);
                     setActiveField("from");
                   }}
                   onFocus={() => setActiveField("from")}
@@ -455,14 +485,15 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
                 <label className="mb-2 block text-xs font-semibold uppercase text-foreground/60">To Station</label>
                 <input
                   type="text"
-                  value={to}
+                  value={toDisplayValue}
                   onChange={(event) => {
-                    setTo(event.target.value);
+                    setToStation(null);
+                    setToInputText(event.target.value);
                     setActiveField("to");
                   }}
                   onFocus={() => setActiveField("to")}
                   onKeyDown={(event) => handleFieldKeyDown("to", event)}
-                  placeholder="e.g., Mumbai, BCT"
+                  placeholder="e.g., Mumbai, MMCT"
                   autoComplete="off"
                   className="w-full rounded-xl border border-foreground/15 bg-foreground/5 px-4 py-3 text-sm outline-none transition hover:border-foreground/25 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                 />
@@ -484,18 +515,20 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
               <button
                 type="button"
                 onClick={handleRouteSearch}
-                disabled={!from.trim() || !to.trim() || loading}
+                disabled={!(fromStation?.code || fromInputText.trim()) || !(toStation?.code || toInputText.trim()) || loading}
                 className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:shadow-lg hover:shadow-primary/25 disabled:cursor-not-allowed disabled:opacity-50 hover:enabled:-translate-y-0.5"
               >
                 <Search size={18} />
                 {loading ? "Searching..." : "Search Trains"}
               </button>
-              {from || to || date ? (
+              {fromInputText || toInputText || fromStation || toStation || date ? (
                 <button
                   type="button"
                   onClick={() => {
-                    setFrom("");
-                    setTo("");
+                    setFromInputText("");
+                    setToInputText("");
+                    setFromStation(null);
+                    setToStation(null);
                     setDate("");
                     setFromSuggestions([]);
                     setToSuggestions([]);

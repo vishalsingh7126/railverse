@@ -101,6 +101,18 @@ const trainDataset = trainsDataset as RawTrainDataset;
 const stationDataset = stationsDataset as RawStationDataset;
 const scheduleRowsRaw = schedulesDataset as RawScheduleDataset;
 
+const STATION_CODE_ALIASES: Record<string, string> = {
+  BCT: "MMCT",
+};
+
+export function normalizeStationCode(code: string): string {
+  if (!code) return code;
+
+  const upper = code.toUpperCase();
+
+  return STATION_CODE_ALIASES[upper] || upper;
+}
+
 function toStringValue(value: unknown, fallback = ""): string {
   if (typeof value !== "string") {
     return fallback;
@@ -111,7 +123,7 @@ function toStringValue(value: unknown, fallback = ""): string {
 }
 
 function toUpperKey(value: unknown): string {
-  return toStringValue(value).toUpperCase();
+  return normalizeStationCode(toStringValue(value));
 }
 
 function toNumber(value: unknown): number | null {
@@ -304,7 +316,7 @@ function normalizeQuery(value: string): string {
 }
 
 function resolveStationCode(input: string): string {
-  const query = normalizeQuery(input);
+  const query = normalizeStationCode(input);
   if (!query) {
     return "";
   }
@@ -451,7 +463,7 @@ export function getRealStopCount(trainNumber: string): number {
 }
 
 export function getStationByCode(stationCode: string): StationData | null {
-  const station = stationMap.get(normalizeQuery(stationCode));
+  const station = stationMap.get(normalizeStationCode(stationCode));
   return station ?? null;
 }
 
