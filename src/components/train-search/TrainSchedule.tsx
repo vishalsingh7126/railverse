@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import type { TrainStop } from "@/lib/trainData";
 import { getRealStopCount } from "@/lib/trainData";
 import { Clock, Circle, ChevronDown } from "lucide-react";
@@ -10,6 +10,7 @@ type TrainScheduleProps = {
   trainNumber: string;
   fromStation?: string;
   toStation?: string;
+  headerAction?: ReactNode;
 };
 
 type ScheduleItem = {
@@ -22,7 +23,13 @@ type ScheduleItem = {
   groupCount?: number;
 };
 
-export function TrainSchedule({ stops, trainNumber, fromStation, toStation }: TrainScheduleProps) {
+export function TrainSchedule({
+  stops,
+  trainNumber,
+  fromStation,
+  toStation,
+  headerAction,
+}: TrainScheduleProps) {
   const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set());
 
   if (!stops || stops.length === 0) {
@@ -128,9 +135,13 @@ export function TrainSchedule({ stops, trainNumber, fromStation, toStation }: Tr
 
   return (
     <section className="space-y-6 md:space-y-8">
-      <div className="space-y-1.5">
-        <h3 className="font-display text-lg font-bold tracking-tight">Full Schedule</h3>
-        <p className="text-xs text-foreground/60">{haltingStationCount} stops</p>
+      <div className="mb-2 flex items-center justify-between gap-4">
+        <div className="space-y-1.5">
+          <h3 className="font-display text-lg font-bold tracking-tight">Full Schedule</h3>
+          <p className="text-xs text-foreground/60">{haltingStationCount} stops</p>
+        </div>
+
+        {headerAction ? <div className="shrink-0">{headerAction}</div> : null}
       </div>
 
       <div className="h-px w-full bg-white/10" />

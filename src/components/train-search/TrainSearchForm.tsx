@@ -345,6 +345,7 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
             <button
               key={suggestion.key}
               type="button"
+              suppressHydrationWarning
               onMouseDown={(event) => {
                 event.preventDefault();
                 selectStationSuggestion(field, suggestion);
@@ -383,6 +384,7 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
             <button
               key={suggestion.key}
               type="button"
+              suppressHydrationWarning
               onMouseDown={(event) => {
                 event.preventDefault();
                 selectTrainSuggestion(suggestion);
@@ -414,6 +416,7 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
         <div className="inline-grid w-full max-w-xl grid-cols-2 gap-2 rounded-full border border-foreground/15 bg-foreground/5 p-1">
           <button
             type="button"
+            suppressHydrationWarning
             onClick={() => {
               setSearchMode("route");
               setActiveField(null);
@@ -428,6 +431,7 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
           </button>
           <button
             type="button"
+            suppressHydrationWarning
             onClick={() => {
               setSearchMode("train");
               setActiveField(null);
@@ -450,6 +454,7 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
               <div className="relative">
                 <label className="mb-2 block text-xs font-semibold uppercase text-foreground/60">From Station</label>
                 <input
+                  suppressHydrationWarning
                   type="text"
                   value={fromDisplayValue}
                   onChange={(event) => {
@@ -461,6 +466,9 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
                   onKeyDown={(event) => handleFieldKeyDown("from", event)}
                   placeholder="e.g., Delhi, NDLS"
                   autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                   className="w-full rounded-xl border border-foreground/15 bg-foreground/5 px-4 py-3 text-sm outline-none transition hover:border-foreground/25 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                 />
                 {renderStationDropdown("from")}
@@ -469,6 +477,7 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
               <div className="flex justify-center lg:pb-2">
                 <button
                   type="button"
+                  suppressHydrationWarning
                   onClick={handleSwap}
                   className="group relative inline-flex h-12 w-12 items-center justify-center rounded-full border border-primary/35 bg-gradient-to-br from-primary/25 to-cyan-500/15 text-primary-soft transition duration-300 hover:shadow-[0_0_25px_rgba(88,126,255,0.45)]"
                   aria-label="Swap from and to stations"
@@ -482,6 +491,7 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
               <div className="relative">
                 <label className="mb-2 block text-xs font-semibold uppercase text-foreground/60">To Station</label>
                 <input
+                  suppressHydrationWarning
                   type="text"
                   value={toDisplayValue}
                   onChange={(event) => {
@@ -493,6 +503,9 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
                   onKeyDown={(event) => handleFieldKeyDown("to", event)}
                   placeholder="e.g., Mumbai, MMCT"
                   autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                   className="w-full rounded-xl border border-foreground/15 bg-foreground/5 px-4 py-3 text-sm outline-none transition hover:border-foreground/25 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                 />
                 {renderStationDropdown("to")}
@@ -501,9 +514,14 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
               <div>
                 <label className="mb-2 block text-xs font-semibold uppercase text-foreground/60">Travel Date</label>
                 <input
+                  suppressHydrationWarning
                   type="date"
                   value={date}
                   onChange={(event) => setDate(event.target.value)}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                   className="w-full rounded-xl border border-foreground/15 bg-foreground/5 px-4 py-3 text-sm outline-none transition hover:border-foreground/25 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                 />
               </div>
@@ -512,6 +530,7 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
             <div className="flex flex-wrap gap-3 pt-2">
               <button
                 type="button"
+                suppressHydrationWarning
                 onClick={handleRouteSearch}
                 disabled={!(fromStation?.code || fromInputText.trim()) || !(toStation?.code || toInputText.trim()) || loading}
                 className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:shadow-lg hover:shadow-primary/25 disabled:cursor-not-allowed disabled:opacity-50 hover:enabled:-translate-y-0.5"
@@ -522,6 +541,7 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
               {fromInputText || toInputText || fromStation || toStation || date ? (
                 <button
                   type="button"
+                  suppressHydrationWarning
                   onClick={() => {
                     setFromInputText("");
                     setToInputText("");
@@ -545,6 +565,7 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
               <div className="relative">
                 <label className="mb-2 block text-xs font-semibold uppercase text-foreground/60">Train Number or Name</label>
                 <input
+                  suppressHydrationWarning
                   type="text"
                   value={trainNumber}
                   onChange={(event) => {
@@ -555,6 +576,9 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
                   onKeyDown={(event) => handleFieldKeyDown("train", event)}
                   placeholder="Enter train number or train name"
                   autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                   className="w-full rounded-xl border border-foreground/15 bg-foreground/5 px-4 py-3 text-sm outline-none transition hover:border-foreground/25 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                 />
                 {renderTrainDropdown()}
@@ -563,6 +587,7 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
               <div className="flex gap-3">
                 <button
                   type="button"
+                  suppressHydrationWarning
                   onClick={handleTrainSearch}
                   disabled={!trainNumber.trim()}
                   className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:shadow-lg hover:shadow-primary/25 disabled:cursor-not-allowed disabled:opacity-50 hover:enabled:-translate-y-0.5"
@@ -574,6 +599,7 @@ export function TrainSearchForm({ onSearch, onSelectTrain, loading = false }: Tr
                 {trainNumber ? (
                   <button
                     type="button"
+                    suppressHydrationWarning
                     onClick={() => {
                       setTrainNumber("");
                       setTrainSuggestions([]);

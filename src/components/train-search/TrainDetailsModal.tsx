@@ -1,11 +1,24 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import type { UnifiedTrain } from "@/lib/trainData";
 import { getTrainSchedule, getRealStopCount } from "@/lib/trainData";
-import { Clock, MapPin, Zap, X, Users, Wind } from "lucide-react";
+import { Clock, MapPin, Zap, X, Users, Wind, MapIcon } from "lucide-react";
 import { Chip } from "@/components/ui/chip";
 import { TrainSchedule } from "./TrainSchedule";
+
+const TrainRouteMap = dynamic(
+  () => import("./TrainRouteMap").then((mod) => mod.TrainRouteMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-xl border border-white/10 bg-black/20 p-8 text-center text-sm text-foreground/70">
+        Loading route map...
+      </div>
+    ),
+  }
+);
 
 type TrainDetailsModalProps = {
   train: UnifiedTrain | null;
@@ -13,9 +26,16 @@ type TrainDetailsModalProps = {
 };
 
 export function TrainDetailsModal({ train, onClose }: TrainDetailsModalProps) {
+  const [showMap, setShowMap] = useState(false);
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (showMap) {
+          setShowMap(false);
+          return;
+        }
+
         onClose();
       }
     };
@@ -29,12 +49,13 @@ export function TrainDetailsModal({ train, onClose }: TrainDetailsModalProps) {
         document.body.style.overflow = "unset";
       };
     }
-  }, [train, onClose]);
+  }, [train, onClose, showMap]);
 
   if (!train) return null;
 
   const schedule = getTrainSchedule(train.number);
   const hasSchedule = schedule && schedule.length > 0;
+  const totalStops = getRealStopCount(train.number);
 
   const getTypeColor = (type: string): "default" | "success" | "warn" | "danger" => {
     if (type.includes("SF") || type.includes("Superfast")) return "success";
@@ -168,7 +189,7 @@ export function TrainDetailsModal({ train, onClose }: TrainDetailsModalProps) {
                       <Users size={16} className="text-primary-soft" />
                       <p className="text-xs font-semibold text-foreground/60 uppercase">Total Stops</p>
                     </div>
-                    <p className="font-display text-lg font-bold">{getRealStopCount(train.number)}</p>
+                    <p className="font-display text-lg font-bold">{totalStops}</p>
                   </div>
                 )}
               </div>
@@ -182,6 +203,16 @@ export function TrainDetailsModal({ train, onClose }: TrainDetailsModalProps) {
                   trainNumber={train.number}
                   fromStation={train.fromName}
                   toStation={train.toName}
+                  headerAction={
+                    <button
+                      type="button"
+                      onClick={() => setShowMap(true)}
+                      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-blue-500/20 shadow-[0_0_20px_rgba(59,130,246,0.25)] transition-all duration-200 hover:scale-[1.03] hover:from-blue-500 hover:to-cyan-400 active:scale-[0.97]"
+                    >
+                      <MapIcon className="h-4 w-4" />
+                      View Route Map
+                    </button>
+                  }
                 />
               </section>
             )}
@@ -229,6 +260,32 @@ export function TrainDetailsModal({ train, onClose }: TrainDetailsModalProps) {
           </div>
         </div>
       </div>
+
+      {showMap && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setShowMap(false)}
+        >
+          <div
+            className="w-full max-w-5xl rounded-2xl border border-white/10 bg-[#0b1220] p-4 md:p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="font-display text-lg font-bold tracking-tight">Train Route Map</h2>
+              <button
+                type="button"
+                onClick={() => setShowMap(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-white/5 hover:bg-white/10"
+                aria-label="Close route map"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <TrainRouteMap trainNumber={train.number} />
+          </div>
+        </div>
+      )}
     </>
   );
 }

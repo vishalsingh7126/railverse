@@ -27,6 +27,11 @@ export function Topbar({ title, subtitle, authState }: TopbarProps) {
           <div className="glass hidden items-center gap-2 rounded-xl px-3 py-2 md:flex">
             <Search size={16} className="text-foreground/65" />
             <input
+              suppressHydrationWarning
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               className="w-44 bg-transparent text-sm outline-none placeholder:text-foreground/45"
               placeholder="Search train, PNR, station"
             />
@@ -47,6 +52,7 @@ export function Topbar({ title, subtitle, authState }: TopbarProps) {
                 </div>
                 <button
                   type="button"
+                  suppressHydrationWarning
                   onClick={authState.onLogoutClick}
                   className="glass rounded-lg border border-foreground/15 px-3 py-2 text-xs font-semibold text-foreground/80 transition hover:text-foreground"
                 >
@@ -55,7 +61,7 @@ export function Topbar({ title, subtitle, authState }: TopbarProps) {
               </div>
           ) : null}
 
-          <button className="glass inline-flex h-10 w-10 items-center justify-center rounded-xl">
+          <button suppressHydrationWarning className="glass inline-flex h-10 w-10 items-center justify-center rounded-xl">
             <Bell size={18} />
           </button>
           <ThemeToggle />

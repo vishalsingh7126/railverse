@@ -54,6 +54,7 @@ A complete, production-ready Train Search feature for the Railverse app using th
      - Complete train information in organized sections
      - Journey details (departure, arrival, duration, distance, type)
      - Full schedule using TrainSchedule component
+  - View on Map overlay with routed path and station markers
      - Simulated coach layout (3 classes: Sleeper, AC 2-Tier, General)
      - Amenities and coach class information
      - Smooth animations and backdrop blur
@@ -161,7 +162,14 @@ const schedule = getTrainSchedule("12345");
 ✅ **Stop information** - Number, name, code, state
 ✅ **Legend** - Color explanation
 
-### 5. UI/UX Enhancements
+### 5. Route Map
+✅ **OpenStreetMap + Leaflet** - Interactive map inside the details modal
+✅ **Routed path** - OpenRouteService computes a realistic path when `NEXT_PUBLIC_OPENROUTESERVICE_API_KEY` is set
+✅ **Fallback** - Straight line is shown if the API is unavailable or the key is missing
+✅ **Station markers** - Source, destination, and intermediate stops are clickable
+✅ **Performance** - Major stops are preferred and long routes are capped to a smaller point set
+
+### 6. UI/UX Enhancements
 ✅ **Dark theme** - Full dark mode support
 ✅ **Glassmorphism** - Modern blur effects on cards
 ✅ **Smooth animations** - Transitions on all interactive elements
@@ -204,6 +212,7 @@ TrainSearchPage (main)
 └── TrainDetailsModal
     ├── Journey Details
     ├── TrainSchedule (timeline)
+  ├── View on Map overlay
     └── Coach Layout Grid
 ```
 
