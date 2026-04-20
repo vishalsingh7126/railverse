@@ -9,7 +9,7 @@ const report = getValidationReport();
 
 console.log("\nRailverse Train Data Validation\n");
 console.log(`Total trains       : ${report.totalTrains}`);
-console.log(`Total schedules    : ${report.totalSchedules}`);
+console.log(`Total stops        : ${report.totalStops}`);
 console.log(`Total stations     : ${report.totalStations}`);
-console.log(`Missing train refs : ${report.missingTrainRefs}`);
-console.log(`Missing station refs: ${report.missingStationRefs}`);
+console.log(`Stops with geo data: ${report.stopsWithGeo}`);
+console.log(`Geo coverage       : ${report.geoDataCoverage}`);

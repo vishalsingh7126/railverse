@@ -1,73 +1,56 @@
-import trainsDataset from "@/data/trains.json";
-import schedulesDataset from "@/data/schedules.json";
 import stationsDataset from "@/data/stations.json";
+import { CSV_DATA } from "../data/trainData.generated";
+import { OLD_ROUTE_MAP } from "../data/routeData.generated";
 
-type RawTrainFeature = {
-  geometry?: {
-    type?: string;
-    coordinates?: unknown;
-  } | null;
-  properties?: Record<string, unknown>;
+export type StationGeo = {
+  code: string;
+  name: string;
+  lat: number;
+  lng: number;
 };
-
-type RawStationFeature = {
-  geometry?: {
-    type?: string;
-    coordinates?: unknown;
-  } | null;
-  properties?: Record<string, unknown>;
-};
-
-type RawScheduleRow = {
-  arrival?: unknown;
-  day?: unknown;
-  departure?: unknown;
-  id?: unknown;
-  station_code?: unknown;
-  station_name?: unknown;
-  train_name?: unknown;
-  train_number?: unknown;
-};
-
-type RawTrainDataset = {
-  type?: string;
-  features?: RawTrainFeature[];
-};
-
-type RawStationDataset = {
-  type?: string;
-  features?: RawStationFeature[];
-};
-
-type RawScheduleDataset = RawScheduleRow[];
 
 export type TrainStop = {
+  trainNumber: string;
+  trainName: string;
   stationCode: string;
   stationName: string;
-  arrival: string;
-  departure: string;
-  stopNumber: number;
-  day: number | null;
-  stationZone: string;
-  stationState: string;
-  stationCoordinates: [number, number] | null;
+  seq: number;
+  arrival: string | null;
+  departure: string | null;
+  distance: number | null;
+  distanceFromSource: number | null; // cumulative km from source station
+  segmentDistance: number | null; // km from previous station to this one
+  segmentFromLastStop: number | null; // km from last HALT station
+  lat: number | null;
+  lng: number | null;
+  isHalt: boolean;
+  isInterpolated: boolean; // true if arrival/departure were calculated by interpolation
 };
 
-export type UnifiedTrain = {
+export type Train = {
+  trainNumber: string;
+  trainName: string;
+  sourceCode: string;
+  sourceName: string;
+  destinationCode: string;
+  destinationName: string;
+  stops: TrainStop[];
+
+  // Legacy aliases used by UI components
   number: string;
   name: string;
   from: string;
   to: string;
   fromName: string;
   toName: string;
+  type: string;
   departure: string;
   arrival: string;
   duration: string;
   distance: number | null;
-  type: string;
-  coordinates: [number, number][];
-  stops: TrainStop[];
 };
+
+export type UnifiedTrain = Train;
 
 export type StationData = {
   code: string;
@@ -78,40 +61,45 @@ export type StationData = {
   coordinates: [number, number] | null;
 };
 
-type ScheduleRow = {
-  arrival: string;
-  day: number | null;
-  departure: string;
+type RawStationFeature = {
+  geometry?: {
+    type?: string;
+    coordinates?: unknown;
+  } | null;
+  properties?: Record<string, unknown>;
+};
+
+type RawStationDataset = {
+  type?: string;
+  features?: RawStationFeature[];
+};
+
+type CsvStop = {
+  trainNumber: string;
+  trainName: string;
   stationCode: string;
   stationName: string;
-  trainName: string;
-  trainNumber: string;
-  sequence: number;
+  arrival: string;
+  departure: string;
+  distance: number;
+  seq: number;
 };
 
-type ValidationReport = {
-  totalTrains: number;
-  totalSchedules: number;
-  totalStations: number;
-  missingTrainRefs: number;
-  missingStationRefs: number;
+type FinalStop = {
+  stationCode: string;
+  stationName: string;
+  seq: number;
+  arrival: string | null;
+  departure: string | null;
+  distance: number | null; // cumulative km from source
+  distanceFromSource: number | null;
+  segmentDistance: number | null;
+  segmentFromLastStop: number | null;
+  isHalt: boolean;
+  isInterpolated: boolean;
 };
 
-const trainDataset = trainsDataset as RawTrainDataset;
 const stationDataset = stationsDataset as RawStationDataset;
-const scheduleRowsRaw = schedulesDataset as RawScheduleDataset;
-
-const STATION_CODE_ALIASES: Record<string, string> = {
-  BCT: "MMCT",
-};
-
-export function normalizeStationCode(code: string): string {
-  if (!code) return code;
-
-  const upper = code.toUpperCase();
-
-  return STATION_CODE_ALIASES[upper] || upper;
-}
 
 function toStringValue(value: unknown, fallback = ""): string {
   if (typeof value !== "string") {
@@ -120,10 +108,6 @@ function toStringValue(value: unknown, fallback = ""): string {
 
   const trimmed = value.trim();
   return trimmed === "" ? fallback : trimmed;
-}
-
-function toUpperKey(value: unknown): string {
-  return normalizeStationCode(toStringValue(value));
 }
 
 function toNumber(value: unknown): number | null {
@@ -137,17 +121,6 @@ function toNumber(value: unknown): number | null {
   }
 
   return null;
-}
-
-function toCoordinates(value: unknown): [number, number][] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .filter((pair): pair is [unknown, unknown] => Array.isArray(pair) && pair.length >= 2)
-    .map((pair) => [Number(pair[0]), Number(pair[1])] as [number, number])
-    .filter(([longitude, latitude]) => Number.isFinite(longitude) && Number.isFinite(latitude));
 }
 
 function toCoordinatePair(value: unknown): [number, number] | null {
@@ -164,41 +137,13 @@ function toCoordinatePair(value: unknown): [number, number] | null {
   return [longitude, latitude];
 }
 
-function toDurationText(durationH: unknown, durationM: unknown): string {
-  const hours = toNumber(durationH);
-  const minutes = toNumber(durationM);
-
-  if (hours === null && minutes === null) {
-    return "N/A";
-  }
-
-  const safeHours = hours ?? 0;
-  const safeMinutes = minutes ?? 0;
-  return `${safeHours}h ${safeMinutes}m`;
-}
-
 function toTimeText(value: unknown): string {
   const text = toStringValue(value);
   return text === "None" || text === "null" ? "N/A" : text || "N/A";
 }
 
-function normalizeTrainFeature(feature: RawTrainFeature) {
-  const properties = feature.properties ?? {};
-
-  return {
-    number: toStringValue(properties.number, "Unknown"),
-    name: toStringValue(properties.name, "Unknown Train"),
-    from: toStringValue(properties.from_station_code, "N/A"),
-    to: toStringValue(properties.to_station_code, "N/A"),
-    fromName: toStringValue(properties.from_station_name, "N/A"),
-    toName: toStringValue(properties.to_station_name, "N/A"),
-    departure: toTimeText(properties.departure),
-    arrival: toTimeText(properties.arrival),
-    duration: toDurationText(properties.duration_h, properties.duration_m),
-    distance: toNumber(properties.distance),
-    type: toStringValue(properties.type, "N/A"),
-    coordinates: toCoordinates(feature.geometry?.coordinates),
-  };
+function toDisplayTime(value: string | null): string {
+  return value && value !== "N/A" ? value : "N/A";
 }
 
 function normalizeStationFeature(feature: RawStationFeature): StationData {
@@ -214,180 +159,849 @@ function normalizeStationFeature(feature: RawStationFeature): StationData {
   };
 }
 
-function normalizeScheduleRow(row: RawScheduleRow, sequence: number): ScheduleRow {
+export function normalizeStationCode(code: string): string {
+  return normalizeCode(code);
+}
+
+function normalizeCode(code: string): string {
+  return toStringValue(code).toUpperCase();
+}
+
+const STATION_CODE_ALIASES: Record<string, string> = {
+  BCT: "MMCT",
+  "BOMBAY CENTRAL": "MMCT",
+  DELHI: "NDLS",
+  KOTA: "KOTA",
+};
+
+function normalizeLookupName(name: string): string {
+  return toStringValue(name)
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeTrainNumber(value: string): string {
+  const raw = toStringValue(value).toUpperCase();
+  if (!raw) {
+    return "";
+  }
+
+  const match = raw.match(/^(\d+)(.*)$/);
+  if (!match) {
+    return raw;
+  }
+
+  const numeric = String(Number(match[1]));
+  const suffix = toStringValue(match[2]);
+  return `${numeric}${suffix}`;
+}
+
+const TRAIN_TYPE_MAP: Record<string, string> = {
+  DURON: "Duronto Express",
+  DURO: "Duronto Express",
+  DUR: "Duronto Express",
+  RAJD: "Rajdhani Express",
+  RAJ: "Rajdhani Express",
+  "S.KRA": "Sampark Kranti Express",
+  SKRA: "Sampark Kranti Express",
+  EXP: "Express",
+  EX: "Express",
+};
+
+function normalizeTrainTypeSuffix(trainName: string): string {
+  const normalizedInput = toStringValue(trainName);
+  if (!normalizedInput) {
+    return trainName;
+  }
+
+  const words = normalizedInput.split(/\s+/).filter(Boolean);
+  if (words.length === 0) {
+    return normalizedInput;
+  }
+
+  const updatedWords = [...words];
+  let replaced = false;
+
+  // Update only trailing type abbreviations to avoid touching route/code tokens.
+  for (let index = updatedWords.length - 1; index >= 0; index -= 1) {
+    const key = updatedWords[index].toUpperCase();
+    const replacement = TRAIN_TYPE_MAP[key];
+    if (!replacement) {
+      break;
+    }
+
+    updatedWords[index] = replacement;
+    replaced = true;
+  }
+
+  if (!replaced) {
+    return normalizedInput;
+  }
+
+  const expandedWords = updatedWords.join(" ").split(/\s+/).filter(Boolean);
+  const dedupedWords: string[] = [];
+
+  for (const word of expandedWords) {
+    const previous = dedupedWords[dedupedWords.length - 1];
+    if (previous && previous.toLowerCase() === word.toLowerCase()) {
+      continue;
+    }
+    dedupedWords.push(word);
+  }
+
+  return dedupedWords.join(" ").trim();
+}
+
+function parseCSV(csvText: string): string[][] {
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentField = "";
+  let insideQuotes = false;
+
+  for (let i = 0; i < csvText.length; i += 1) {
+    const char = csvText[i];
+    const nextChar = csvText[i + 1];
+
+    if (char === '"') {
+      if (insideQuotes && nextChar === '"') {
+        currentField += '"';
+        i += 1;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+      continue;
+    }
+
+    if (char === "," && !insideQuotes) {
+      currentRow.push(currentField.trim());
+      currentField = "";
+      continue;
+    }
+
+    if ((char === "\n" || char === "\r") && !insideQuotes) {
+      if (currentField || currentRow.length > 0) {
+        currentRow.push(currentField.trim());
+        if (currentRow.some((field) => field)) {
+          rows.push(currentRow);
+        }
+        currentRow = [];
+        currentField = "";
+      }
+
+      if (char === "\r" && nextChar === "\n") {
+        i += 1;
+      }
+      continue;
+    }
+
+    currentField += char;
+  }
+
+  if (currentField || currentRow.length > 0) {
+    currentRow.push(currentField.trim());
+    if (currentRow.some((field) => field)) {
+      rows.push(currentRow);
+    }
+  }
+
+  return rows;
+}
+
+function parseCsvStops(csvText: string): CsvStop[] {
+  const rows = parseCSV(csvText);
+  if (rows.length <= 1) {
+    return [];
+  }
+
+  const dataRows = rows.slice(1);
+  const result: CsvStop[] = [];
+  const seen = new Set<string>();
+
+  for (const row of dataRows) {
+    if (row.length < 8) {
+      continue;
+    }
+
+    const trainNumber = normalizeTrainNumber(row[0]);
+    const trainName = normalizeTrainTypeSuffix(toStringValue(row[1], "Unknown Train"));
+    const seq = toNumber(row[2]);
+    const stationCode = normalizeStationCode(row[3]);
+    const stationName = toStringValue(row[4], stationCode || "Unknown Station");
+    const arrival = toTimeText(row[5]);
+    const departure = toTimeText(row[6]);
+    const distance = toNumber(row[7]);
+
+    if (!trainNumber || !stationCode || seq === null || distance === null) {
+      continue;
+    }
+
+    const dedupeKey = `${trainNumber}|${seq}`;
+    if (seen.has(dedupeKey)) {
+      continue;
+    }
+    seen.add(dedupeKey);
+
+    result.push({
+      trainNumber,
+      trainName,
+      stationCode,
+      stationName,
+      arrival,
+      departure,
+      distance,
+      seq,
+    });
+  }
+
+  return result;
+}
+
+function buildStationMaps() {
+  const normalizedStations = (stationDataset.features ?? []).map(normalizeStationFeature);
+  const geoMap = new Map<string, StationGeo>();
+  const stationMap = new Map<string, StationData>();
+  const stationCodeByName = new Map<string, string>();
+  const stationByNormalizedName = new Map<string, StationData>();
+  const stationList: StationData[] = [];
+
+  for (const station of normalizedStations) {
+    const code = normalizeStationCode(station.code);
+    if (!code) {
+      continue;
+    }
+
+    stationMap.set(code, station);
+    stationCodeByName.set(station.name.toUpperCase(), code);
+    stationByNormalizedName.set(normalizeLookupName(station.name), station);
+    stationList.push(station);
+
+    if (station.coordinates) {
+      geoMap.set(code, {
+        code,
+        name: station.name,
+        lat: station.coordinates[1],
+        lng: station.coordinates[0],
+      });
+    }
+  }
+
   return {
-    arrival: toTimeText(row.arrival),
-    day: toNumber(row.day),
-    departure: toTimeText(row.departure),
-    stationCode: toUpperKey(row.station_code),
-    stationName: toStringValue(row.station_name, "Unknown Station"),
-    trainName: toStringValue(row.train_name, "Unknown Train"),
-    trainNumber: toStringValue(row.train_number, ""),
-    sequence,
+    stationMap,
+    stationGeoMap: geoMap,
+    stationCodeByName,
+    stationByNormalizedName,
+    stationList,
   };
 }
 
-const normalizedTrains = (trainDataset.features ?? []).map(normalizeTrainFeature);
-const normalizedStations = (stationDataset.features ?? []).map(normalizeStationFeature);
-const normalizedSchedules = scheduleRowsRaw.map((row, index) => normalizeScheduleRow(row, index));
+function buildCsvStopsByTrain(csvStops: CsvStop[]): Map<string, CsvStop[]> {
+  const byTrain = new Map<string, CsvStop[]>();
 
-const trainMap = new Map<string, UnifiedTrain>();
-const stationMap = new Map<string, StationData>();
-const scheduleMap = new Map<string, ScheduleRow[]>();
-const routeMap = new Map<string, string[]>();
-const stationLookupByName = new Map<string, string>();
-
-for (const station of normalizedStations) {
-  const code = station.code.toUpperCase();
-  if (!code) {
-    continue;
+  for (const stop of csvStops) {
+    const existing = byTrain.get(stop.trainNumber) ?? [];
+    existing.push(stop);
+    byTrain.set(stop.trainNumber, existing);
   }
 
-  stationMap.set(code, station);
-  if (station.name) {
-    stationLookupByName.set(station.name.toUpperCase(), code);
-  }
-}
-
-for (const train of normalizedTrains) {
-  trainMap.set(train.number, {
-    ...train,
-    stops: [],
-  });
-}
-
-for (const row of normalizedSchedules) {
-  if (!row.trainNumber) {
-    continue;
+  for (const stops of byTrain.values()) {
+    stops.sort((a, b) => a.seq - b.seq);
   }
 
-  const existing = scheduleMap.get(row.trainNumber) ?? [];
-  existing.push(row);
-  scheduleMap.set(row.trainNumber, existing);
+  return byTrain;
 }
 
-for (const [trainNumber, rows] of scheduleMap) {
-  rows.sort((left, right) => {
-    const leftDay = left.day ?? Number.MAX_SAFE_INTEGER;
-    const rightDay = right.day ?? Number.MAX_SAFE_INTEGER;
+function buildOldRouteByTrain() {
+  const result = new Map<string, Array<{ stationCode: string; stationName: string; seq: number }>>();
 
-    if (leftDay !== rightDay) {
-      return leftDay - rightDay;
+  for (const [rawTrainNumber, points] of Object.entries(OLD_ROUTE_MAP)) {
+    const trainNumber = normalizeTrainNumber(rawTrainNumber);
+    if (!trainNumber || !Array.isArray(points) || points.length === 0) {
+      continue;
     }
 
-    return left.sequence - right.sequence;
-  });
+    const cleanPoints: Array<{ stationCode: string; stationName: string; seq: number }> = [];
+    for (const point of points) {
+      const stationCode = normalizeStationCode(point.stationCode);
+      if (!stationCode) {
+        continue;
+      }
 
-  const stops: TrainStop[] = rows.map((row, index) => {
-    const station = stationMap.get(row.stationCode);
+      cleanPoints.push({
+        stationCode,
+        stationName: toStringValue(point.stationName, stationCode),
+        seq: cleanPoints.length + 1,
+      });
+    }
+
+    if (cleanPoints.length > 0) {
+      result.set(trainNumber, cleanPoints);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Converts time string "HH:MM" to total minutes since midnight
+ */
+function timeToMinutes(timeStr: string | null): number | null {
+  if (!timeStr || timeStr === "N/A") return null;
+  const parts = timeStr.split(":");
+  if (parts.length < 2) return null;
+  const hours = parseInt(parts[0], 10);
+  const minutes = parseInt(parts[1], 10);
+  if (isNaN(hours) || isNaN(minutes)) return null;
+  return hours * 60 + minutes;
+}
+
+/**
+ * Converts total minutes since midnight to time string "HH:MM"
+ */
+function minutesToTime(totalMinutes: number): string {
+  const hours = Math.floor(totalMinutes / 60) % 24;
+  const minutes = totalMinutes % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+/**
+ * Interpolates arrival/departure times for non-halt stations
+ * between surrounding halt stations.
+ *
+ * Logic:
+ * - For each segment [HALT A] -> [NON-HALTS] -> [HALT B]
+ * - Calculate time range: endTime - startTime
+ * - Distribute evenly: timePerStep = totalTime / (numStations + 1)
+ * - Assign: each non-halt at position i gets startTime + (i * timePerStep)
+ */
+function interpolateNonHaltTimes(stops: FinalStop[]): FinalStop[] {
+  const result = [...stops];
+
+  let i = 0;
+  while (i < result.length) {
+    // Find first halt (starting point)
+    let haltStartIdx = -1;
+    for (let j = i; j < result.length; j++) {
+      if (result[j].isHalt && result[j].departure !== null) {
+        haltStartIdx = j;
+        break;
+      }
+    }
+
+    if (haltStartIdx === -1) {
+      i++;
+      continue; // No halt found, skip
+    }
+
+    const haltStart = result[haltStartIdx];
+    const startTimeMinutes = timeToMinutes(haltStart.departure);
+
+    if (startTimeMinutes === null) {
+      i = haltStartIdx + 1;
+      continue; // Invalid time, skip
+    }
+
+    // Find consecutive non-halts
+    const nonHaltIndices: number[] = [];
+    let j = haltStartIdx + 1;
+    while (j < result.length) {
+      if (result[j].isHalt) {
+        break; // Found next halt
+      }
+      nonHaltIndices.push(j);
+      j++;
+    }
+
+    // If no non-halts between, move to next
+    if (nonHaltIndices.length === 0) {
+      i = haltStartIdx + 1;
+      continue;
+    }
+
+    // Check if we found the next halt (endpoint)
+    const haltEndIdx = j;
+    if (haltEndIdx >= result.length) {
+      // No ending halt, can't interpolate
+      i = haltStartIdx + 1;
+      continue;
+    }
+
+    const haltEnd = result[haltEndIdx];
+    const endTimeMinutes = timeToMinutes(haltEnd.arrival);
+
+    if (endTimeMinutes === null) {
+      i = haltStartIdx + 1;
+      continue; // Invalid time, skip
+    }
+
+    // Calculate total time in segment
+    let totalTime = endTimeMinutes - startTimeMinutes;
+    // Handle times crossing midnight (e.g., 23:00 to 01:00 next day)
+    if (totalTime < 0) {
+      totalTime += 24 * 60; // Add 24 hours
+    }
+
+    // Ensure positive time range
+    if (totalTime <= 0) {
+      i = haltStartIdx + 1;
+      continue;
+    }
+
+    // Distribute time across all stations (including start and end)
+    const timePerStep = totalTime / (nonHaltIndices.length + 1);
+
+    // Assign interpolated times to non-halt stations
+    for (let k = 0; k < nonHaltIndices.length; k++) {
+      const idx = nonHaltIndices[k];
+      const stepTime = (k + 1) * timePerStep;
+      const interpolatedMinutes = startTimeMinutes + stepTime;
+      
+      // Wrap around if crossing midnight
+      const wrappedMinutes = interpolatedMinutes % (24 * 60);
+
+      result[idx].arrival = minutesToTime(Math.round(wrappedMinutes));
+      result[idx].departure = result[idx].arrival; // Same for non-halts (no stop duration)
+      result[idx].isInterpolated = true;
+    }
+
+    i = haltEndIdx;
+  }
+
+  return result;
+}
+
+/**
+ * Calculates and interpolates distance information for all stops.
+ *
+ * For each stop:
+ * - distanceFromSource: cumulative km from source station
+ * - segmentDistance: km from previous station to this one
+ * - segmentFromLastStop: km from last HALT station to this one
+ *
+ * For non-halt stations without distance:
+ * - Interpolates linearly between nearest halt stations with distance data
+ */
+function calculateStopDistances(stops: FinalStop[]): FinalStop[] {
+  const result = [...stops];
+
+  if (result.length === 0) {
+    return result;
+  }
+
+  // Find stops that need interpolation
+  for (let i = 0; i < result.length; i++) {
+    if (result[i].distance !== null) {
+      continue; // Already has distance data
+    }
+
+    // Find previous stop with distance
+    let prevIdx = -1;
+    let prevDistance: number | null = null;
+    for (let j = i - 1; j >= 0; j--) {
+      if (result[j].distance !== null) {
+        prevIdx = j;
+        prevDistance = result[j].distance;
+        break;
+      }
+    }
+
+    // Find next stop with distance
+    let nextIdx = -1;
+    let nextDistance: number | null = null;
+    for (let j = i + 1; j < result.length; j++) {
+      if (result[j].distance !== null) {
+        nextIdx = j;
+        nextDistance = result[j].distance;
+        break;
+      }
+    }
+
+    // Interpolate distance if we have both surrounding points
+    if (prevIdx !== -1 && nextIdx !== -1 && prevDistance !== null && nextDistance !== null) {
+      const prevSeq = result[prevIdx].seq;
+      const nextSeq = result[nextIdx].seq;
+      const currSeq = result[i].seq;
+
+      const totalSegments = nextSeq - prevSeq;
+      const currentSegment = currSeq - prevSeq;
+      const distanceDiff = nextDistance - prevDistance;
+
+      const interpolatedDistance =
+        prevDistance + (distanceDiff * currentSegment) / totalSegments;
+
+      result[i].distance = Math.round(interpolatedDistance);
+    } else if (prevIdx !== -1 && prevDistance !== null) {
+      // Only have previous, use that distance (shouldn't advance much)
+      result[i].distance = prevDistance;
+    } else if (nextIdx !== -1 && nextDistance !== null) {
+      // Only have next, estimate backwards (conservative)
+      result[i].distance = Math.max(0, nextDistance - 5);
+    }
+    // If neither, leave as null
+  }
+
+  // Second pass: calculate distanceFromSource, segmentDistance, and segmentFromLastStop
+  let lastHaltDistance: number | null = null;
+
+  for (let i = 0; i < result.length; i++) {
+    result[i].distanceFromSource = result[i].distance;
+
+    if (i === 0) {
+      // First station: distance from source is 0
+      result[i].segmentDistance = 0;
+      result[i].segmentFromLastStop = 0;
+
+      if (result[i].isHalt && result[i].distance !== null) {
+        lastHaltDistance = result[i].distance;
+      }
+    } else {
+      // Calculate segment distance from previous station
+      const current = result[i].distance;
+      const prev = result[i - 1].distance;
+
+      if (current !== null && prev !== null) {
+        result[i].segmentDistance = Math.max(0, current - prev);
+      } else {
+        result[i].segmentDistance = null;
+      }
+
+      if (current !== null && lastHaltDistance !== null) {
+        result[i].segmentFromLastStop = Math.max(0, current - lastHaltDistance);
+      } else if (i === 0) {
+        result[i].segmentFromLastStop = 0;
+      } else {
+        result[i].segmentFromLastStop = null;
+      }
+
+      if (result[i].isHalt && current !== null) {
+        lastHaltDistance = current;
+      }
+    }
+  }
+
+  return result;
+}
+
+function mergeStopsForTrain(
+  trainNumber: string,
+  csvStops: CsvStop[],
+  oldRoute: Array<{ stationCode: string; stationName: string; seq: number }> | undefined,
+  stationGeoMap: Map<string, StationGeo>
+): TrainStop[] {
+  const csvByCode = new Map<string, CsvStop[]>();
+  for (const stop of csvStops) {
+    const existing = csvByCode.get(stop.stationCode) ?? [];
+    existing.push(stop);
+    csvByCode.set(stop.stationCode, existing);
+  }
+
+  for (const queue of csvByCode.values()) {
+    queue.sort((a, b) => a.seq - b.seq);
+  }
+
+  const finalStops: FinalStop[] = [];
+
+  if (oldRoute && oldRoute.length > 0) {
+    for (const routePoint of oldRoute) {
+      const queue = csvByCode.get(routePoint.stationCode) ?? [];
+      const csvMatch = queue.length > 0 ? queue.shift() : null;
+
+      if (csvMatch) {
+        finalStops.push({
+          stationCode: routePoint.stationCode,
+          stationName: csvMatch.stationName || routePoint.stationName,
+          seq: routePoint.seq,
+          arrival: csvMatch.arrival,
+          departure: csvMatch.departure,
+          distance: csvMatch.distance,
+          distanceFromSource: null, // Will be calculated later
+          segmentDistance: null, // Will be calculated later
+          segmentFromLastStop: null, // Will be calculated later
+          isHalt: true,
+          isInterpolated: false,
+        });
+      } else {
+        finalStops.push({
+          stationCode: routePoint.stationCode,
+          stationName: routePoint.stationName,
+          seq: routePoint.seq,
+          arrival: null,
+          departure: null,
+          distance: null,
+          distanceFromSource: null, // Will be calculated later
+          segmentDistance: null, // Will be calculated later
+          segmentFromLastStop: null, // Will be calculated later
+          isHalt: false,
+          isInterpolated: false,
+        });
+      }
+    }
+
+    // CSV halts that were not present in old route are appended to preserve CSV truth.
+    const leftovers = [...csvByCode.values()].flat().sort((a, b) => a.seq - b.seq);
+    for (const left of leftovers) {
+      finalStops.push({
+        stationCode: left.stationCode,
+        stationName: left.stationName,
+        seq: finalStops.length + 1,
+        arrival: left.arrival,
+        departure: left.departure,
+        distance: left.distance,
+        distanceFromSource: null, // Will be calculated later
+        segmentDistance: null, // Will be calculated later
+        segmentFromLastStop: null, // Will be calculated later
+        isHalt: true,
+        isInterpolated: false,
+      });
+    }
+  } else {
+    for (const csvStop of csvStops) {
+      finalStops.push({
+        stationCode: csvStop.stationCode,
+        stationName: csvStop.stationName,
+        seq: finalStops.length + 1,
+        arrival: csvStop.arrival,
+        departure: csvStop.departure,
+        distance: csvStop.distance,
+        distanceFromSource: null, // Will be calculated later
+        segmentDistance: null, // Will be calculated later
+        segmentFromLastStop: null, // Will be calculated later
+        isHalt: true,
+        isInterpolated: false,
+      });
+    }
+  }
+
+  finalStops.sort((a, b) => a.seq - b.seq);
+
+  // Interpolate times for non-halt stations
+  const interpolatedStops = interpolateNonHaltTimes(finalStops);
+
+  // Calculate distances for all stations (including interpolation for non-halts)
+  const stopsWithDistances = calculateStopDistances(interpolatedStops);
+
+  return stopsWithDistances.map((stop) => {
+    const geo = stationGeoMap.get(stop.stationCode);
+    const resolvedStation = resolveStation(stop.stationCode, stop.stationName, {
+      warnOnMissing: false,
+    });
 
     return {
-      stationCode: row.stationCode || "N/A",
-      stationName: station?.name ?? row.stationName ?? "Unknown Station",
-      arrival: row.arrival,
-      departure: row.departure,
-      stopNumber: index + 1,
-      day: row.day,
-      stationZone: station?.zone ?? "N/A",
-      stationState: station?.state ?? "N/A",
-      stationCoordinates: station?.coordinates ?? null,
+      trainNumber,
+      trainName: csvStops[0]?.trainName ?? "Unknown Train",
+      stationCode: stop.stationCode,
+      stationName: resolvedStation?.name ?? stop.stationName,
+      seq: stop.seq,
+      arrival: stop.arrival,
+      departure: stop.departure,
+      distance: stop.distance,
+      distanceFromSource: stop.distanceFromSource,
+      segmentDistance: stop.segmentDistance,
+      segmentFromLastStop: stop.segmentFromLastStop,
+      lat: geo?.lat ?? null,
+      lng: geo?.lng ?? null,
+      isHalt: stop.isHalt,
+      isInterpolated: stop.isInterpolated,
     };
   });
+}
 
-  const train = trainMap.get(trainNumber);
-  if (train) {
-    train.stops = stops;
+const csvStops = parseCsvStops(CSV_DATA);
+const {
+  stationMap,
+  stationGeoMap,
+  stationCodeByName,
+  stationByNormalizedName,
+  stationList,
+} = buildStationMaps();
+const csvStopsByTrain = buildCsvStopsByTrain(csvStops);
+const oldRouteByTrain = buildOldRouteByTrain();
+
+function findStationByName(name: string): StationData | null {
+  const normalizedName = normalizeLookupName(name);
+  if (!normalizedName) {
+    return null;
   }
+
+  const exact = stationByNormalizedName.get(normalizedName);
+  if (exact) {
+    return exact;
+  }
+
+  return (
+    stationList.find((station) => {
+      const candidate = normalizeLookupName(station.name);
+      return candidate.includes(normalizedName) || normalizedName.includes(candidate);
+    }) ?? null
+  );
 }
 
-for (const train of trainMap.values()) {
-  const normalizedFrom = train.from.toUpperCase();
-  const normalizedTo = train.to.toUpperCase();
-  const fromStationCode = stationLookupByName.get(train.fromName.toUpperCase()) ?? normalizedFrom;
-  const toStationCode = stationLookupByName.get(train.toName.toUpperCase()) ?? normalizedTo;
-  const routeKey = `${fromStationCode}|${toStationCode}`;
-  const existing = routeMap.get(routeKey) ?? [];
-  existing.push(train.number);
-  routeMap.set(routeKey, existing);
+function resolveStation(
+  code: string,
+  fallbackName?: string,
+  options: { warnOnMissing?: boolean } = {}
+): StationData | null {
+  const { warnOnMissing = true } = options;
+  const normalized = normalizeCode(code);
+  const aliased = STATION_CODE_ALIASES[normalized] ?? normalized;
+
+  const directByCode = stationMap.get(aliased);
+  if (directByCode) {
+    return directByCode;
+  }
+
+  const byExactNameCode = stationCodeByName.get(aliased);
+  if (byExactNameCode) {
+    return stationMap.get(byExactNameCode) ?? null;
+  }
+
+  const byFallbackName = fallbackName ? findStationByName(fallbackName) : null;
+  if (byFallbackName) {
+    return byFallbackName;
+  }
+
+  const byInputName = findStationByName(aliased);
+  if (byInputName) {
+    return byInputName;
+  }
+
+  if (warnOnMissing && process.env.NODE_ENV !== "production") {
+    console.warn("Missing station mapping:", code);
+  }
+
+  return null;
 }
+
+function buildTrainMap(): Map<string, Train> {
+  const result = new Map<string, Train>();
+  const trainNumbers = new Set<string>([
+    ...csvStopsByTrain.keys(),
+    ...oldRouteByTrain.keys(),
+  ]);
+
+  for (const trainNumber of trainNumbers) {
+    const csvTrainStops = csvStopsByTrain.get(trainNumber) ?? [];
+    if (csvTrainStops.length === 0) {
+      continue;
+    }
+
+    const mergedStops = mergeStopsForTrain(
+      trainNumber,
+      csvTrainStops,
+      oldRouteByTrain.get(trainNumber),
+      stationGeoMap
+    );
+
+    const source = mergedStops[0];
+    const destination = mergedStops[mergedStops.length - 1];
+    if (!source || !destination) {
+      continue;
+    }
+
+    const firstHalt = mergedStops.find((stop) => stop.isHalt) ?? source;
+    const lastHalt = [...mergedStops].reverse().find((stop) => stop.isHalt) ?? destination;
+
+    const totalDistance = (() => {
+      const withDistance = mergedStops.filter((stop) => stop.distance !== null);
+      if (withDistance.length === 0) {
+        return null;
+      }
+      return withDistance[withDistance.length - 1].distance;
+    })();
+
+    const trainName = csvTrainStops[0]?.trainName ?? "Unknown Train";
+
+    result.set(trainNumber, {
+      trainNumber,
+      trainName,
+      sourceCode: source.stationCode,
+      sourceName: source.stationName,
+      destinationCode: destination.stationCode,
+      destinationName: destination.stationName,
+      stops: mergedStops,
+
+      number: trainNumber,
+      name: trainName,
+      from: source.stationCode,
+      to: destination.stationCode,
+      fromName: source.stationName,
+      toName: destination.stationName,
+      type: "Express",
+      departure: toDisplayTime(firstHalt.departure),
+      arrival: toDisplayTime(lastHalt.arrival),
+      duration: "N/A",
+      distance: totalDistance,
+    });
+  }
+
+  return result;
+}
+
+const trainMap = buildTrainMap();
 
 function normalizeQuery(value: string): string {
   return value.trim().toUpperCase();
 }
 
 function resolveStationCode(input: string): string {
-  const query = normalizeStationCode(input);
+  const query = normalizeCode(input);
   if (!query) {
     return "";
   }
 
-  if (stationMap.has(query)) {
-    return query;
+  const resolved = resolveStation(query, undefined, { warnOnMissing: false });
+  return resolved?.code ?? query;
+}
+
+function getInterpolatedDistance(stops: TrainStop[], index: number): number | null {
+  const current = stops[index];
+  if (!current) {
+    return null;
   }
 
-  return stationLookupByName.get(query) ?? query;
-}
-
-function buildUnifiedTrain(train: UnifiedTrain): UnifiedTrain {
-  const stops = train.stops;
-  const firstStop = stops[0];
-  const lastStop = stops[stops.length - 1];
-
-  return {
-    ...train,
-    name: train.name || "Unknown Train",
-    from: train.from || "N/A",
-    to: train.to || "N/A",
-    fromName: train.fromName || "N/A",
-    toName: train.toName || "N/A",
-    departure: train.departure || "N/A",
-    arrival: train.arrival || "N/A",
-    duration: train.duration || "N/A",
-    distance: train.distance ?? null,
-    type: train.type || "N/A",
-    coordinates: train.coordinates,
-    stops: stops.length
-      ? stops
-      : firstStop || lastStop
-        ? stops
-        : [],
-  };
-}
-
-function buildScheduleStops(trainNumber: string): TrainStop[] {
-  const train = trainMap.get(trainNumber);
-  return train ? train.stops : [];
-}
-
-function getRouteTrainNumbers(from: string, to: string): string[] {
-  const fromCode = resolveStationCode(from);
-  const toCode = resolveStationCode(to);
-
-  if (!fromCode || !toCode) {
-    return [];
+  if (current.distance !== null) {
+    return current.distance;
   }
 
-  const directKey = `${fromCode}|${toCode}`;
-  const directMatches = routeMap.get(directKey) ?? [];
-  if (directMatches.length > 0) {
-    return directMatches;
+  let leftIndex = index - 1;
+  while (leftIndex >= 0 && stops[leftIndex]?.distance === null) {
+    leftIndex -= 1;
   }
 
-  const fromNameMatches = stationLookupByName.get(normalizeQuery(from)) ?? fromCode;
-  const toNameMatches = stationLookupByName.get(normalizeQuery(to)) ?? toCode;
-  const fallbackKey = `${fromNameMatches}|${toNameMatches}`;
-  return routeMap.get(fallbackKey) ?? [];
+  let rightIndex = index + 1;
+  while (rightIndex < stops.length && stops[rightIndex]?.distance === null) {
+    rightIndex += 1;
+  }
+
+  const left = leftIndex >= 0 ? stops[leftIndex] : undefined;
+  const right = rightIndex < stops.length ? stops[rightIndex] : undefined;
+
+  if (left && right && left.distance !== null && right.distance !== null) {
+    const span = rightIndex - leftIndex;
+    if (span <= 0) {
+      return left.distance;
+    }
+    const ratio = (index - leftIndex) / span;
+    return left.distance + (right.distance - left.distance) * ratio;
+  }
+
+  if (left && left.distance !== null) {
+    return left.distance;
+  }
+
+  if (right && right.distance !== null) {
+    return right.distance;
+  }
+
+  return null;
 }
 
-export function getAllTrains(): UnifiedTrain[] {
-  return [...trainMap.values()].map(buildUnifiedTrain);
+export function getAllTrains(): Train[] {
+  return [...trainMap.values()];
 }
 
-export function getAllStations(): StationData[] {
-  return [...stationMap.values()];
-}
-
-export function searchTrains(from: string, to: string): UnifiedTrain[] {
+export function searchTrains(from: string, to: string): Train[] {
   const fromQuery = normalizeQuery(from);
   const toQuery = normalizeQuery(to);
 
@@ -398,99 +1012,111 @@ export function searchTrains(from: string, to: string): UnifiedTrain[] {
   const resolvedFrom = resolveStationCode(fromQuery);
   const resolvedTo = resolveStationCode(toQuery);
 
-  return [...trainMap.values()]
-    .filter((train) => {
-      const stops = scheduleMap.get(train.number) ?? train.stops;
+  return [...trainMap.values()].filter((train) => {
+    const fromIndex = train.stops.findIndex((stop) => {
+      const code = stop.stationCode.toUpperCase();
+      const name = stop.stationName.toUpperCase();
+      return code === fromQuery || code === resolvedFrom || name === fromQuery;
+    });
 
-      if (!stops.length) {
-        return false;
-      }
+    const toIndex = train.stops.findIndex((stop) => {
+      const code = stop.stationCode.toUpperCase();
+      const name = stop.stationName.toUpperCase();
+      return code === toQuery || code === resolvedTo || name === toQuery;
+    });
 
-      const fromIndex = stops.findIndex((stop) => {
-        const stationCode = stop.stationCode.toUpperCase();
-        const stationName = stop.stationName.toUpperCase();
-        return stationCode === fromQuery || stationName === fromQuery || stationCode === resolvedFrom;
-      });
-
-      const toIndex = stops.findIndex((stop) => {
-        const stationCode = stop.stationCode.toUpperCase();
-        const stationName = stop.stationName.toUpperCase();
-        return stationCode === toQuery || stationName === toQuery || stationCode === resolvedTo;
-      });
-
-      return fromIndex !== -1 && toIndex !== -1 && fromIndex < toIndex;
-    })
-    .map(buildUnifiedTrain);
+    return fromIndex !== -1 && toIndex !== -1 && fromIndex < toIndex;
+  });
 }
 
-export function getTrainByNumber(trainNumber: string): UnifiedTrain | null {
-  const train = trainMap.get(toStringValue(trainNumber).trim());
-  return train ? buildUnifiedTrain(train) : null;
+export function getTrainByNumber(trainNumber: string): Train | null {
+  const normalized = normalizeTrainNumber(trainNumber);
+  return trainMap.get(normalized) ?? null;
 }
 
 export function getTrainSchedule(trainNumber: string): TrainStop[] {
-  return buildScheduleStops(toStringValue(trainNumber).trim());
+  const train = getTrainByNumber(trainNumber);
+  return train?.stops ?? [];
 }
 
-export function getRealStopCount(trainNumber: string): number {
-  const stops = getTrainSchedule(trainNumber);
-
-  if (!stops || stops.length === 0) {
-    return 0;
-  }
-
-  const parseTime = (timeStr: string): number => {
-    if (!timeStr || timeStr === "N/A") return 0;
-    const parts = timeStr.split(":");
-    if (parts.length < 2) return 0;
-    const hours = parseInt(parts[0], 10);
-    const minutes = parseInt(parts[1], 10);
-    return isNaN(hours) || isNaN(minutes) ? 0 : hours * 60 + minutes;
-  };
-
-  const calculateHaltDuration = (stop: TrainStop): number => {
-    if (stop.arrival === stop.departure || stop.arrival === "N/A" || stop.departure === "N/A") {
-      return 0;
-    }
-    const arrivalMinutes = parseTime(stop.arrival);
-    const departureMinutes = parseTime(stop.departure);
-    if (arrivalMinutes === 0 || departureMinutes === 0) return 0;
-    const duration = departureMinutes - arrivalMinutes;
-    return duration > 0 ? duration : 0;
-  };
-
-  return stops.filter((stop) => calculateHaltDuration(stop) > 0).length;
+export function getRouteCoordinates(trainNumber: string): [number, number][] {
+  return getTrainSchedule(trainNumber)
+    .filter((stop) => stop.lat !== null && stop.lng !== null)
+    .map((stop) => [stop.lat as number, stop.lng as number]);
 }
 
 export function getStationByCode(stationCode: string): StationData | null {
-  const station = stationMap.get(normalizeStationCode(stationCode));
-  return station ?? null;
-}
+  const resolved = resolveStation(stationCode);
+  if (resolved) {
+    return resolved;
+  }
 
-const validationReport: ValidationReport = (() => {
-  const trainNumbers = new Set(trainMap.keys());
-  const stationCodes = new Set(stationMap.keys());
-
-  let missingTrainRefs = 0;
-  let missingStationRefs = 0;
-  for (const row of normalizedSchedules) {
-    if (row.trainNumber && !trainNumbers.has(row.trainNumber)) {
-      missingTrainRefs++;
-    }
-    if (row.stationCode && !stationCodes.has(row.stationCode)) {
-      missingStationRefs++;
-    }
+  const code = normalizeCode(stationCode);
+  const geo = stationGeoMap.get(code);
+  if (!geo) {
+    return null;
   }
 
   return {
-    totalTrains: trainMap.size,
-    totalSchedules: normalizedSchedules.length,
-    totalStations: stationMap.size,
-    missingTrainRefs,
-    missingStationRefs,
+    code: geo.code,
+    name: geo.name,
+    state: "N/A",
+    zone: "N/A",
+    address: "N/A",
+    coordinates: [geo.lng, geo.lat],
   };
-})();
+}
 
-export function getValidationReport(): ValidationReport {
-  return validationReport;
+export function getAllStations(): StationData[] {
+  return [...stationMap.values()];
+}
+
+export function getRealStopCount(trainNumber: string): number {
+  return getTrainSchedule(trainNumber).filter((stop) => stop.isHalt).length;
+}
+
+export function getSegmentDistance(trainNumber: string, fromSeq: number, toSeq: number): number {
+  const stops = getTrainSchedule(trainNumber);
+  const fromIndex = stops.findIndex((stop) => stop.seq === fromSeq);
+  const toIndex = stops.findIndex((stop) => stop.seq === toSeq);
+
+  if (fromIndex === -1 || toIndex === -1) {
+    return 0;
+  }
+
+  const fromDistance = getInterpolatedDistance(stops, fromIndex);
+  const toDistance = getInterpolatedDistance(stops, toIndex);
+
+  if (fromDistance === null || toDistance === null) {
+    return 0;
+  }
+
+  return Math.abs(toDistance - fromDistance);
+}
+
+export function getJourneyDistance(trainNumber: string, fromSeq: number, toSeq: number): number {
+  return getSegmentDistance(trainNumber, fromSeq, toSeq);
+}
+
+export function getValidationReport() {
+  const totalTrains = trainMap.size;
+  const totalStops = [...trainMap.values()].reduce((sum, train) => sum + train.stops.length, 0);
+  const totalHaltStops = [...trainMap.values()].reduce(
+    (sum, train) => sum + train.stops.filter((stop) => stop.isHalt).length,
+    0
+  );
+  const totalStations = stationGeoMap.size;
+  const stopsWithGeo = [...trainMap.values()].reduce(
+    (sum, train) => sum + train.stops.filter((stop) => stop.lat !== null && stop.lng !== null).length,
+    0
+  );
+
+  return {
+    totalTrains,
+    totalStops,
+    totalHaltStops,
+    totalStations,
+    stopsWithGeo,
+    geoDataCoverage: totalStops > 0 ? `${((stopsWithGeo / totalStops) * 100).toFixed(2)}%` : "0%",
+  };
 }

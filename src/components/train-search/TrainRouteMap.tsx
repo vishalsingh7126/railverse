@@ -26,8 +26,8 @@ type TrainRouteMapProps = {
 type MappedStop = {
   stationName: string;
   stationCode: string;
-  arrival: string;
-  departure: string;
+  arrival: string | null;
+  departure: string | null;
   latitude: number;
   longitude: number;
   isHalt: boolean;
@@ -73,28 +73,33 @@ export function TrainRouteMap({ trainNumber }: TrainRouteMapProps) {
   const mapStops = useMemo(() => {
     return schedule
       .map((stop) => {
-        const station = getStationByCode(stop.stationCode);
+        let latitude = stop.lat;
+        let longitude = stop.lng;
 
-        if (!station?.coordinates) {
+        if (latitude === null || longitude === null) {
+          const station = getStationByCode(stop.stationCode);
+          if (station?.coordinates) {
+            longitude = station.coordinates[0];
+            latitude = station.coordinates[1];
+          }
+        }
+
+        if (latitude === null || longitude === null) {
           return null;
         }
 
-        const [longitude, latitude] = station.coordinates;
         if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
           return null;
         }
 
         return {
-          stationName: station.name,
+          stationName: stop.stationName,
           stationCode: stop.stationCode,
           arrival: stop.arrival,
           departure: stop.departure,
           latitude,
           longitude,
-          isHalt:
-            stop.arrival !== stop.departure &&
-            stop.arrival !== "N/A" &&
-            stop.departure !== "N/A",
+          isHalt: stop.isHalt,
         } satisfies MappedStop;
       })
       .filter((stop): stop is MappedStop => stop !== null);
@@ -209,7 +214,8 @@ export function TrainRouteMap({ trainNumber }: TrainRouteMapProps) {
                 <br />
                 {stop.stationCode}
                 <br />
-                {stop.arrival} - {stop.departure}
+                {(stop.arrival && stop.arrival !== "N/A" ? stop.arrival : "--:--")} - {" "}
+                {(stop.departure && stop.departure !== "N/A" ? stop.departure : "--:--")}
               </Popup>
             </Marker>
           );
@@ -287,7 +293,7 @@ function reduceRoutePoints(stops: MappedStop[]): LatLngTuple[] {
       return true;
     }
 
-    return stop.arrival !== stop.departure && stop.arrival !== "N/A" && stop.departure !== "N/A";
+    return stop.isHalt;
   });
 
   const preferredStops = majorStops.length >= 2 ? majorStops : stops;

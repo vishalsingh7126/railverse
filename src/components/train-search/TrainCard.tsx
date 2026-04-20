@@ -73,7 +73,7 @@ export function TrainCard({ train, onClick }: TrainCardProps) {
           )}
 
           {/* Stops */}
-          {train.stops && train.stops.length > 0 && (
+          {train.stops && train.stops.length > 0 && train.number && (
             <div className="flex items-center gap-3 text-sm">
               <Zap size={16} className="text-cyan-400 flex-shrink-0" />
               <span>
